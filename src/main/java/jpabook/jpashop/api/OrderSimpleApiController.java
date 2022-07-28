@@ -5,6 +5,8 @@ import jpabook.jpashop.domain.Order;
 import jpabook.jpashop.domain.OrderStatus;
 import jpabook.jpashop.repository.OrderRepository;
 import jpabook.jpashop.repository.OrderSearch;
+import jpabook.jpashop.repository.order.simplequery.OrderSimpleQueryDto;
+import jpabook.jpashop.repository.order.simplequery.OrderSimpleQueryRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,8 @@ import static java.util.stream.Collectors.toList;
 @RequiredArgsConstructor
 public class OrderSimpleApiController {
     private final OrderRepository orderRepository;
+
+    private final OrderSimpleQueryRepository orderSimpleQueryRepository;
 
     /**
      * 주문 조회 api
@@ -103,6 +107,39 @@ public class OrderSimpleApiController {
         return result;
     }
 
+    /**
+     * V4. JPA에서 DTO로 바로 조회
+     * - 쿼리 1번 호출
+     * - select 절에서 원하는 데이터만 선택해서 조회
+     *
+     * - V3와 member , delivery에 대해서 join 하는건 같지만 , 유일하게 다른점은 select 절에서 dto에 맞게 원하는 데이터만 가져와서 반환한다.
+     * - select절에서 원하는 데이터만 가져오기 때문에 V3보댜 성능 최적화를 할 수 있다.
+     *
+     *  - 몇가지의 단점이 존재 -> 재사용성이 떨어진다.
+     *  - V3 같은 경우는 공용으로 많이 사용될 수 있다. -> 단지 Controller 단에서 원한는 데이터(DTO)로 바인딩을 해서 반환하면 된다.
+     *  - V4 같은 경우는 딱 정해진 DTO로만 반환하기 때문에 범용성이 떨어진다. Repo에서 조회할때 쿼리가 지저분해진다.
+     *
+     *  - 추가적으로 순수Repo는 순수한 Entity를 저장하거나 찾을때 사용하는 목적을 가지고 있지 , api에 종속적인 서비스를 개발하기 위해서
+     *  - 만든것이 아니다. 따라서 특정 Dto를 new operation을 이용해서 조회하는 경우는 dto 반환을 위한 새로운 Repo를 만들어서 개발해야 한다.
+     *  - 리포지토리 재사용성이 떨어짐, API 스펙에 맞춘 코드가 리포지토리에 들어가는 단점
+     *  - 새로운 Repo를 만들어서 해당 dto 조회용 메서드를 옮겼다.
+     *
+     *  - V3와 V4 같은 경우는, 사실 select에서 조회하는 필드에서 차이가 난다. 실무에서는 사실 select에 의해서 조회되는 필드의 개수보다
+     *  - 몇개의 join table를 거쳤는지에 대해서 성능이 천지차이로 나타난다.
+     *  - 물론 select절에서 20~30개의 필드가 나온다면 그땐 이야기가 또 달라진다.
+     *
+     *  쿼리 방식 선택 권장 순서
+     * 1. 우선 엔티티를 DTO로 변환하는 방법을 선택한다. -> V2
+     * 2. 필요하면 페치 조인으로 성능을 최적화 한다. 대부분의 성능 이슈가 해결된다. -> V3 -> 보통 여기서 거의 다 해결
+     * 3. 그래도 안되면 DTO로 직접 조회하는 방법을 사용한다. -> V$
+     * 4. 최후의 방법은 JPA가 제공하는 네이티브 SQL이나 스프링 JDBC Template을 사용해서 SQL을 직접
+     * 사용한다
+     */
+    @GetMapping("/api/v4/simple-orders")
+
+    public List<OrderSimpleQueryDto> ordersV4() {
+        return orderSimpleQueryRepository.findOrderDtos();
+    }
 
 
 
