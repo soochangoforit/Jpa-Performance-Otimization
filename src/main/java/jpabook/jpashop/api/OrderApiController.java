@@ -1,14 +1,20 @@
 package jpabook.jpashop.api;
 
+import jpabook.jpashop.domain.Address;
 import jpabook.jpashop.domain.Order;
 import jpabook.jpashop.domain.OrderItem;
+import jpabook.jpashop.domain.OrderStatus;
 import jpabook.jpashop.repository.OrderRepository;
 import jpabook.jpashop.repository.OrderSearch;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * V1. 엔티티 직접 노출
@@ -58,8 +64,61 @@ public class OrderApiController {
     }
 
 
+    /**
+     * - 주문 조회 V2: 엔티티를 DTO로 변환
+     * - 지연 로딩으로 너무 많은 SQL 실행
+     * - 정팔 필요한 데이터만을 dto를 통해서 반환을 하고 있지만,
+     * - 생성자 시점에서 dto 객체로 데이터 바인딩 하는 과정에서 프록시 객체를 사용해서 DB에 쿼리를 불러오기 때문에
+     * - N + 1 문제 발생
+     * - Entity 대신 Dto로 반환을 하더라도 , Entity를 Dto로 매핑하는것도 있으면 안된다. (지연로딩 사용)
+     *
+     * - SQL 실행 수
+     * - order 1번
+     * - member , address N번(order 조회 수 만큼)
+     * - orderItem N번(order 조회 수 만큼)
+     * - item N번(orderItem 조회 수 만큼)
+     */
+    @GetMapping("/api/v2/orders")
+    public List<OrderDto> ordersV2() {
+        List<Order> orders = orderRepository.findAllByString(new OrderSearch());
+        List<OrderDto> result = orders.stream()
+                .map(o -> new OrderDto(o))
+                .collect(toList());
+        return result;
+    }
 
 
+    @Data
+    static class OrderDto {
+        private Long orderId;
+        private String name; // member의 이름을 프록시 객체로 가져오지 않고. 실제로 쿼리를 날려서 실제 데이터를 가져오려고 한다.
+                             // 만약 Member 가져오려고 한다면 -> 순환 참조 에러가 발생한다.
+        private LocalDateTime orderDate; //주문시간
+        private OrderStatus orderStatus;
+        private Address address;
+        private List<OrderItemDto> orderItems;
+        public OrderDto(Order order) {
+            orderId = order.getId();
+            name = order.getMember().getName(); // 프록시 객체 초기화
+            orderDate = order.getOrderDate();
+            orderStatus = order.getStatus();
+            address = order.getDelivery().getAddress();
+            orderItems = order.getOrderItems().stream()
+                    .map(orderItem -> new OrderItemDto(orderItem))
+                    .collect(toList());
+        }
+    }
+    @Data
+    static class OrderItemDto {
+        private String itemName;//상품 명
+        private int orderPrice; //주문 가격
+        private int count; //주문 수량
+        public OrderItemDto(OrderItem orderItem) { // orderItem이 가지고 있는 Order에 대해서는 다시 가져오지 않는다.
+            itemName = orderItem.getItem().getName(); // 프록시 객체 초기화
+            orderPrice = orderItem.getOrderPrice();
+            count = orderItem.getCount();
+        }
+    }
 
 
 
