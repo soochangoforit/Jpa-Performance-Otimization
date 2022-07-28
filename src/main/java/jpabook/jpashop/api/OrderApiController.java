@@ -121,5 +121,27 @@ public class OrderApiController {
     }
 
 
+    /**
+     * fetch join을 사용해서 주문 조회 V3
+     * fetch join을 하더라도 OneToMany 관계에 의해서 데이터 뻥튀기 현상 발생
+     * Order가 OrderItem의 개수에 맞게 뻥튀기 현상 발생 2개에서 4개로 증가
+     * 실제 return 할때도 select가 Order table에 맞춰 있기 때문에,
+     * 반환되는 데이터에는 Order에 대한 똑같은 값이 2번 나온다.
+     * OrerItem의 크기에 맞게 inner join이 되기때문에 Order에 대해서는 2배의 뻥튀기 발생
+     * DB 입장에서는 1 : '다' 가 있으면 '다'에 대해서 데이터가 증가하게 된다.
+     *
+     * - 결과적으로 1번의 쿼리가 나가게 된다.
+     * - V2와 다른점은 객체 그래프를 가지고 fetch join을 했는지 안했는지에 대해서 차이가 난다.
+     */
+    @GetMapping("/api/v3/orders")
+    public List<OrderDto> ordersV3() {
+        List<Order> orders = orderRepository.findAllWithItem(); // orders 에서도 2건이 나와야 하지만 4건이 나오고 있다.
+        List<OrderDto> result = orders.stream()
+                .map(o -> new OrderDto(o))
+                .collect(toList());
+        return result;
+    }
+
+
 
 }
