@@ -88,6 +88,23 @@ public class OrderRepository {
     }
 
 
-
-
+    /**
+     * 한방 쿼리로 필요한 데이터들을 다 가져온다.
+     * SQL 입장에서는 join이다. 한번에 필요한 데이터를 select 절 안에 넣고 한방에 가져온다.
+     *
+     * Member 와 Delivery에 대해서는 Lazy이지만, 다 무시하고 값을 다 채워서 온다. -> fetch  join
+     * fetch라는건 SQL에 없고 JPA에만 있는 문법이다. -> 한방에 가져온다고 해서 EAGER로 설정해버리면, 필요없는 데이터까지 다 들고오는
+     * 문제점이 발생한다. -> fetch join으로 해결
+     *
+     * - 기본적으로 inner join이다.
+     *
+     * - 패치 조인으로 order -> member , order -> delivery 를 한방에 가져온다. 그래서 지연로딩 사용하지 X
+     */
+    public List<Order> findAllWithMemberDelivery() {
+        return em.createQuery(
+                        "select o from Order o" +
+                                " join fetch o.member m" +
+                                " join fetch o.delivery d", Order.class)
+                .getResultList();
+    }
 }
