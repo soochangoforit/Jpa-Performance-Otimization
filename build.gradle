@@ -40,6 +40,8 @@ dependencies {
 		exclude group: "org.hamcrest", module: "hamcrest-core"
 	}
 
+	// 기본적으로 초기화 된 프록시 객체만 노출, 초기화 되지 않은 프록시 객체는 노출 안함
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5'
 
 	//Database connector - MariaDB
 	//runtimeOnly 'org.mariadb.jdbc:mariadb-java-client:3.0.3'
