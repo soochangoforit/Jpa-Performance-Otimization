@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotEmpty;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +19,7 @@ public class Member {
     @Column(name = "member_id")
     private Long id;
 
+    @NotEmpty(message = "회원 이름은 필수 입니다") // DB 제약 조건과는 다르게, controller단에서 해결하기 위해서 사용한다.
     private String name;
 
     @Embedded
