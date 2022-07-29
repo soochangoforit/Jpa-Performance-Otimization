@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@EqualsAndHashCode(of = "orderId")
+@EqualsAndHashCode(of = "orderId") // stream , groupby에서 map으로 바꿔주기 위한 key 값으로 작용 하는걸 알려준다.
 public class OrderQueryDto {
     private Long orderId;
     private String name;
@@ -26,4 +26,15 @@ public class OrderQueryDto {
         this.orderStatus = orderStatus;
         this.address = address;
     }
+
+    public OrderQueryDto(Long orderId, String name, LocalDateTime orderDate,
+                         OrderStatus orderStatus, Address address, List<OrderItemQueryDto> orderItems) {
+        this.orderId = orderId;
+        this.name = name;
+        this.orderDate = orderDate;
+        this.orderStatus = orderStatus;
+        this.address = address;
+        this.orderItems = orderItems;
+    }
+
 }

@@ -122,4 +122,22 @@ public class OrderQueryRepository {
     }
 
 
+    /**
+     * OrderItems에 대해서 fetch join으로 한방 쿼리로 가져오려고 한다.
+     * 하지만 이렇게 하면 페이징 처리는 못하게 된다는 단점이 있다 왜냐하면 Order에 대한 데이터가 OrerItems에 맞게끔
+     * 데이터 뻥튀기 현상이 발생하기 때문이다.
+     * @return
+     */
+    public List<OrderFlatDto> findAllByDto_flat() {
+        return em.createQuery(
+                        "select new jpabook.jpashop.repository.order.query.OrderFlatDto(o.id, m.name, o.orderDate, o.status, d.address, i.name, oi.orderPrice, oi.count)" +
+                        " from Order o" +
+                                " join o.member m" +
+                                " join o.delivery d" +
+                                " join o.orderItems oi" +
+                                " join oi.item i", OrderFlatDto.class)
+                .getResultList();
+    }
+
+
 }
