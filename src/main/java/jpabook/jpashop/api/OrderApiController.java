@@ -9,6 +9,7 @@ import jpabook.jpashop.repository.OrderSearch;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -128,7 +129,7 @@ public class OrderApiController {
      * 실제 return 할때도 select가 Order table에 맞춰 있기 때문에,
      * 반환되는 데이터에는 Order에 대한 똑같은 값이 2번 나온다.
      * OrerItem의 크기에 맞게 inner join이 되기때문에 Order에 대해서는 2배의 뻥튀기 발생
-     * DB 입장에서는 1 : '다' 가 있으면 '다'에 대해서 데이터가 증가하게 된다.
+     * DB 입장에서는 1 : '다' 가 있으면 '다'에 대해서 데이터가 증가하게 된다. -> distinct로 해결 가능
      *
      * - 결과적으로 1번의 쿼리가 나가게 된다.
      * - V2와 다른점은 객체 그래프를 가지고 fetch join을 했는지 안했는지에 대해서 차이가 난다.
@@ -141,6 +142,29 @@ public class OrderApiController {
                 .collect(toList());
         return result;
     }
+
+
+    /**
+     * V3.1 엔티티를 조회해서 DTO로 변환 페이징 고려
+     * - ToOne 관계만 우선 모두 페치 조인으로 최적화
+     * - 컬렉션 관계는 hibernate.default_batch_fetch_size, @BatchSize로 최적화
+     */
+    @GetMapping("/api/v3.1/orders")
+    public List<OrderDto> ordersV3_page(@RequestParam(value = "offset", defaultValue = "0") int offset,
+                                        @RequestParam(value = "limit", defaultValue = "100") int limit) {
+
+        // XToOne이 걸린 데이터들을 단순히 fetch join으로 필요한 데이터가 있는 테이블을 한방 쿼리로 조회한다.
+        // 페이징에 영향을 주지 않기 때문에 -> 대신 orderItems에 대해서는 N +1 문제점이 발생한다.
+        // List<Order> orders = orderRepository.findAllWithMemberDelivery();
+
+        List<Order> orders = orderRepository.findAllWithMemberDelivery(offset, limit);
+
+        List<OrderDto> result = orders.stream()
+                .map(o -> new OrderDto(o))
+                .collect(toList());
+        return result;
+    }
+
 
 
 
