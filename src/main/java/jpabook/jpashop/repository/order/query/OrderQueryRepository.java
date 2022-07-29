@@ -5,6 +5,8 @@ import org.springframework.stereotype.Repository;
 
 import javax.persistence.EntityManager;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -74,5 +76,50 @@ public class OrderQueryRepository {
                 .setParameter("orderId", orderId)
                 .getResultList(); // list로 반환한다.
     }
+
+
+
+
+
+    /**
+     * 최적화
+     * Query: 루트 1번, 컬렉션 1번
+     * 데이터를 한꺼번에 처리할 때 많이 사용하는 방식
+     *
+     */
+    public List<OrderQueryDto> findAllByDto_optimization() {
+        //루트 조회(toOne 코드를 모두 한번에 조회)
+        List<OrderQueryDto> result = findOrders();
+
+        //orderItem 컬렉션을 MAP 한방에 조회, 이전까지는 for문 순환을 돌면서 N +1 문제 발생
+        Map<Long, List<OrderItemQueryDto>> orderItemMap = findOrderItemMap(toOrderIds(result));
+
+        //루프를 돌면서 컬렉션 추가(추가 쿼리 실행X) , key 값을 통해서 찾는다.
+        result.forEach(o -> o.setOrderItems(orderItemMap.get(o.getOrderId())));
+        return result;
+    }
+
+    private List<Long> toOrderIds(List<OrderQueryDto> result) {
+        // 반환 값으로 Member가 주문한 Order의 고유 id 값이 들어간다.
+        return result.stream()
+                .map(o -> o.getOrderId())
+                .collect(Collectors.toList());
+    }
+
+    private Map<Long, List<OrderItemQueryDto>> findOrderItemMap(List<Long> orderIds) {
+
+        List<OrderItemQueryDto> orderItems = em.createQuery(
+                        "select new jpabook.jpashop.repository.order.query.OrderItemQueryDto(oi.order.id, i.name, oi.orderPrice, oi.count)" +
+                        " from OrderItem oi" +
+                                " join oi.item i" +
+                                " where oi.order.id in :orderIds", OrderItemQueryDto.class) // v4와 다른점은 jpql에서 orerItems가 가지고 있는 id를 in절로 한방 쿼리를 통해 가져오려고 한다. 마치 batch size를 우리가 custom 하는 느낌
+                .setParameter("orderIds", orderIds)
+                .getResultList();
+
+        // 조금이라도 성능 최적화를 위해 list를 id로 묶어서 데이터를 모아준다.
+        // groupby를 통해서 list를 map으로 바꿀 수 있다.
+        return orderItems.stream().collect(Collectors.groupingBy(OrderItemQueryDto::getOrderId));
+    }
+
 
 }
